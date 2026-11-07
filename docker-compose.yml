@@ -1,0 +1,84 @@
+services:
+  opa:
+    image: openpolicyagent/opa:1.20.1-debug
+    container_name: opa
+    command:
+      - "run"
+      - "--server"
+      - "--addr=0.0.0.0:8181"
+      - "--set=decision_logs.console=true"
+      - "--set=default_decision=/trades/authz/allow"
+      - "/policies"
+    volumes:
+      - ./policies:/policies:ro
+    ports:
+      - "8181:8181"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_DB: permdemo
+      POSTGRES_USER: permdemo
+      POSTGRES_PASSWORD: permdemo
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U permdemo -d permdemo"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\"'"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  es-seed:
+    image: curlimages/curl:8.10.1
+    container_name: es-seed
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./elasticsearch:/seed:ro
+    entrypoint: ["/bin/sh", "/seed/load.sh"]
+
+  app:
+    build:
+      context: ./app
+    container_name: app
+    depends_on:
+      opa:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      OPA_URL: http://opa:8181
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/permdemo
+      SPRING_DATASOURCE_USERNAME: permdemo
+      SPRING_DATASOURCE_PASSWORD: permdemo
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:
+  esdata:

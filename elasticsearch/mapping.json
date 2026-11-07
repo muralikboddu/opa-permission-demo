@@ -1,0 +1,17 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  },
+  "mappings": {
+    "properties": {
+      "id":           { "type": "long" },
+      "trade_date":   { "type": "date", "format": "yyyy-MM-dd" },
+      "desk_id":      { "type": "keyword" },
+      "country_code": { "type": "keyword" },
+      "owner_id":     { "type": "keyword" },
+      "symbol":       { "type": "keyword" },
+      "notional":     { "type": "double" }
+    }
+  }
+}

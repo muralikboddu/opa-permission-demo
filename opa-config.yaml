@@ -1,0 +1,45 @@
+# OPA server configuration
+# Controls decision logging and where logs are shipped.
+#
+# Decision log entry shape (one per authorization decision):
+#   decision_id  - unique ID for this decision (use for dedup in SIEM)
+#   timestamp    - RFC3339 UTC
+#   path         - policy rule evaluated (trades/authz/allow)
+#   input        - exactly what was sent: subject (who) + resource (what)
+#   result       - the allow/reasons returned
+#   requested_by - IP of the caller (the Spring Boot app)
+#   metrics      - evaluation time in nanoseconds
+
+decision_logs:
+  # --- Option 1: stdout (current) ---
+  # Always keep this on during development; remove in prod if noisy.
+  console: true
+
+  # --- Option 2: HTTP push to a remote compliance/SIEM endpoint ---
+  # OPA batches decisions and POSTs them as a JSON array to this URL.
+  # Uncomment and set the URL to enable. Works with:
+  #   - Splunk HEC:          https://splunk-host:8088/services/collector
+  #   - Elasticsearch:       http://es-host:9200/opa-decisions/_bulk
+  #   - Custom audit service: https://your-compliance-api/decisions
+  #   - Any webhook receiver
+  #
+  # plugin: http
+  # service: compliance_backend
+
+  # Tune batching to control latency vs. throughput:
+  reporting:
+    min_delay_seconds: 5     # flush at least every 5 seconds
+    max_delay_seconds: 10    # never hold a batch longer than 10 seconds
+
+# Define the remote endpoint (used when plugin: http is enabled above)
+services:
+  compliance_backend:
+    url: https://your-compliance-endpoint.example.com
+    # credentials:
+    #   bearer:
+    #     token: "${COMPLIANCE_TOKEN}"   # read from env var
+
+# Optional: mask sensitive fields before they leave OPA.
+# Useful if input contains PII you don't want in the audit log.
+# decision_logs:
+#   mask_decision: data.system.log.mask
