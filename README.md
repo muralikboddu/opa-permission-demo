@@ -7,6 +7,8 @@ A fully runnable demo of a permission model enforced as policy using [Open Polic
 
 Both paths use the **same Rego policy**. The blotter list and the single-trade view can never disagree about what a user is allowed to see.
 
+> For a low-level walkthrough of every component — data flow diagrams, line-by-line code explanation, OPA AST internals, and a full end-to-end worked example — see **[CODEBASE.md](./CODEBASE.md)**.
+
 ---
 
 ## How it works
